@@ -73,7 +73,7 @@ function DiagnosisPanel({
 
     setTimeout(() => {
       window.location.reload();
-    }, 1200);
+    }, 1000);
   };
 
   const handleReject = () => {
@@ -85,7 +85,7 @@ function DiagnosisPanel({
 
     setTimeout(() => {
       window.location.reload();
-    }, 1200);
+    }, 1000);
   };
 
   const handleEdit = () => {
@@ -340,7 +340,7 @@ function DiagnosisPanel({
               <button
                 type="button"
                 onClick={handleEdit}
-                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-gray-200 transition hover:bg-white/10"
+                className="flex-1 cursor-pointer rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-gray-200 transition hover:bg-white/10"
               >
                 Edit
               </button>
@@ -348,7 +348,7 @@ function DiagnosisPanel({
               <button
                 type="button"
                 onClick={handleReject}
-                className="flex-1 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-400 transition hover:bg-red-500/20"
+                className="flex-1 cursor-pointer rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-400 transition hover:bg-red-500/20"
               >
                 Reject
               </button>
@@ -356,7 +356,7 @@ function DiagnosisPanel({
               <button
                 type="button"
                 onClick={handleAccept}
-                className="flex-1 rounded-lg bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-400"
+                className="flex-1 cursor-pointer rounded-lg bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-400"
               >
                 Accept
               </button>

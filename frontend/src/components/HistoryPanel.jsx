@@ -50,7 +50,7 @@ function HistoryPanel({ onSelect }) {
           <button
             type="button"
             onClick={clearHistory}
-            className="text-xs font-semibold text-red-400 hover:text-red-300"
+            className="text-xs cursor-pointer font-semibold text-red-400 hover:text-red-300"
           >
             Clear All
           </button>
@@ -71,7 +71,7 @@ function HistoryPanel({ onSelect }) {
               <button
                 type="button"
                 onClick={() => onSelect(item)}
-                className="w-full text-left"
+                className="w-full cursor-pointer text-left"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -110,7 +110,7 @@ function HistoryPanel({ onSelect }) {
                 <button
                   type="button"
                   onClick={() => deleteEntry(item.id)}
-                  className="text-xs font-semibold text-red-400 hover:text-red-300"
+                  className="text-xs cursor-pointer font-semibold text-red-400 hover:text-red-300"
                 >
                   Delete
                 </button>

@@ -489,6 +489,10 @@ Return ONLY valid JSON with exactly these fields:
 }}
 """
 
+    import time
+    
+    start = time.perf_counter()
+
     completion = client.chat.completions.create(
         model="gemini-3.6-flash",
         messages=[
@@ -501,9 +505,14 @@ Return ONLY valid JSON with exactly these fields:
                 "content": user_prompt
             }
         ],
-        temperature=0,
-        timeout=30
+        temperature=0
     )
+
+    
+
+    print()
+    print(f"Gemini latency: {time.perf_counter() - start:.2f}s")
+    print()
 
     response = completion.choices[0].message.content
 
