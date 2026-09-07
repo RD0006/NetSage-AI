@@ -178,7 +178,7 @@ function App() {
       console.log("Sending payload:", payload);
 
       const response = await fetch(
-        "http://localhost:5000/analyze",
+        `${import.meta.env.VITE_API_URL}/analyze`,
         {
           method: "POST",
           headers: {
