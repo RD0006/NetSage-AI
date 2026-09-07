@@ -9,6 +9,7 @@ import CommandOutputs from "./components/CommandOutputs";
 import NotesInput from "./components/NotesInput";
 import AnalyzeButton from "./components/AnalyzeButton";
 import DiagnosisPanel from "./components/DiagnosisPanel";
+import HistoryPanel from "./components/HistoryPanel";
 
 function App() {
   const [symptom, setSymptom] = useState("");
@@ -153,6 +154,36 @@ function App() {
     );
   };
 
+
+  const saveToHistory = (diagnosisData, historyId) => {
+    const existingHistory = JSON.parse(
+      localStorage.getItem("netsage_history") || "[]"
+    );
+
+    const historyEntry = {
+      id: historyId,
+      timestamp: new Date().toISOString(),
+
+      symptom,
+      devices,
+      connections,
+      commands,
+      notes,
+
+      diagnosis: diagnosisData,
+
+      reviewStatus: "Review Required",
+    };
+
+    localStorage.setItem(
+      "netsage_history",
+      JSON.stringify([
+        historyEntry,
+        ...existingHistory,
+      ])
+    );
+  };
+
   // -----------------------------
   // ANALYSIS
   // -----------------------------
@@ -198,7 +229,14 @@ function App() {
         );
       }
 
-      setDiagnosis(result.diagnosis);
+      const historyEntry = {
+        ...result.diagnosis,
+        reviewStatus: "Review Required",
+        historyId: Date.now(),
+      };
+
+      setDiagnosis(historyEntry);
+      saveToHistory(result.diagnosis, historyEntry.historyId);
     } catch (error) {
       console.error("Analysis error:", error);
 
@@ -209,6 +247,40 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const updateHistoryReviewStatus = (historyId, status) => {
+  const history = JSON.parse(
+    localStorage.getItem("netsage_history") || "[]"
+  );
+
+  const updatedHistory = history.map((entry) =>
+    entry.id === historyId
+      ? {
+          ...entry,
+          reviewStatus: status,
+        }
+      : entry
+  );
+
+  localStorage.setItem(
+    "netsage_history",
+    JSON.stringify(updatedHistory)
+  );
+};
+
+  const handleHistorySelect = (entry) => {
+    setSymptom(entry.symptom || "");
+    setDevices(entry.devices || []);
+    setConnections(entry.connections || []);
+    setCommands(entry.commands || []);
+    setNotes(entry.notes || "");
+
+    setDiagnosis({
+      ...entry.diagnosis,
+      reviewStatus: entry.reviewStatus || "Review Required",
+      historyId: entry.id,
+    });
   };
 
   return (
@@ -273,8 +345,15 @@ function App() {
 
           {/* RIGHT */}
 
-          <aside className="lg:sticky lg:top-6 lg:self-start">
-            <DiagnosisPanel diagnosis={diagnosis} />
+          <aside className="space-y-6 lg:sticky lg:top-6 lg:self-start">
+            <DiagnosisPanel
+              diagnosis={diagnosis}
+              onReviewStatusChange={updateHistoryReviewStatus}
+            />
+
+            <HistoryPanel
+              onSelect={handleHistorySelect}
+            />
           </aside>
         </div>
       </main>

@@ -8,6 +8,7 @@ from openai import OpenAI
 
 load_dotenv()
 
+
 Gemini_API_Key = os.getenv("Gemini_API_Key")
 
 if not Gemini_API_Key:
@@ -50,36 +51,60 @@ RULES:
    - root_cause must identify the affected interface as administratively
      down.
    - fault_domain must be "Interface".
+   - osi_layer must be "Layer 1".
    - confidence must be "High".
+   - severity must be "High".
    - next_command should normally be [].
    - fix_steps should explain how to use "no shutdown" on the explicitly
      identified interface.
 
 6. If the checker reports interface_down:
-   diagnose the explicitly identified interface as down.
+   - diagnose the explicitly identified interface as down.
+   - fault_domain must be "Interface".
+   - osi_layer must be "Layer 1".
+   - confidence must be "High".
+   - severity must be "High".
 
 7. If the checker reports duplicate_ip:
-   diagnose the duplicate IP address.
+   - diagnose the duplicate IP address.
+   - fault_domain must be "IP".
+   - osi_layer must be "Layer 3".
+   - confidence must be "High".
+   - severity must be "Critical".
 
 8. If the checker reports missing_vlan:
-   diagnose the missing VLAN evidence.
+   - diagnose the missing VLAN evidence.
+   - fault_domain must be "VLAN".
+   - osi_layer must be "Layer 2".
+   - confidence must be "High".
+   - severity must be "Medium".
 
 9. If the checker reports missing_default_route:
-   diagnose the missing default route.
+   - diagnose the missing default route.
+   - fault_domain must be "Routing".
+   - osi_layer must be "Layer 3".
+   - confidence must be "High".
+   - severity must be "High".
 
 10. If there is no confirmed checker issue, do not invent a fault.
 
 11. If the evidence is insufficient:
-   root_cause must be:
-   "No deterministic root cause can be identified from the supplied evidence."
+    root_cause must be:
+    "No deterministic root cause can be identified from the supplied evidence."
 
-   fault_domain must be:
-   "Undetermined"
+    fault_domain must be:
+    "Undetermined"
 
-   osi_layer must be:
-   "Undetermined"
+    osi_layer must be:
+    "Undetermined"
 
-   fix_steps must be [].
+    confidence must be:
+    "Low"
+
+    severity must be:
+    "Low"
+
+    fix_steps must be [].
 
 12. Do not assume a host's physical switch port.
 
@@ -89,6 +114,12 @@ RULES:
 14. NetSage is suggest-only. It never executes commands or changes
     network devices.
 
+15. Severity values must be exactly one of:
+    "Critical"
+    "High"
+    "Medium"
+    "Low"
+
 Return ONLY valid JSON with exactly these fields:
 
 {
@@ -96,6 +127,7 @@ Return ONLY valid JSON with exactly these fields:
     "fault_domain": "string",
     "osi_layer": "string",
     "confidence": "High | Medium | Low",
+    "severity": "Critical | High | Medium | Low",
     "evidence": ["string"],
     "next_command": ["string"],
     "fix_steps": ["string"]
@@ -111,14 +143,29 @@ def _extract_json(response):
     response = response.strip()
 
     if response.startswith("```"):
-        response = re.sub(r"^```(?:json)?", "", response, flags=re.IGNORECASE)
-        response = re.sub(r"```$", "", response)
+        response = re.sub(
+            r"^```(?:json)?",
+            "",
+            response,
+            flags=re.IGNORECASE
+        )
+
+        response = re.sub(
+            r"```$",
+            "",
+            response
+        )
+
         response = response.strip()
 
     return json.loads(response)
 
 
-def _build_authoritative_diagnosis(checker_result, commands, symptom):
+def _build_authoritative_diagnosis(
+    checker_result,
+    commands,
+    symptom
+):
     """
     Build a deterministic diagnosis for confirmed checker issues.
 
@@ -133,16 +180,19 @@ def _build_authoritative_diagnosis(checker_result, commands, symptom):
 
     evidence = []
     fix_steps = []
+
     root_cause = ""
     fault_domain = "Undetermined"
     osi_layer = "Undetermined"
+    severity = "Low"
 
-    # --------------------------------------------------------
+    # ========================================================
     # Interface administratively down
-    # --------------------------------------------------------
+    # ========================================================
 
     shutdown_issues = [
-        issue for issue in issues
+        issue
+        for issue in issues
         if issue.get("type") == "interface_shutdown"
     ]
 
@@ -162,9 +212,14 @@ def _build_authoritative_diagnosis(checker_result, commands, symptom):
 
         fault_domain = "Interface"
         osi_layer = "Layer 1"
+        severity = "High"
 
         for issue in shutdown_issues:
-            interface = issue.get("interface", "Unknown interface")
+
+            interface = issue.get(
+                "interface",
+                "Unknown interface"
+            )
 
             evidence.append(
                 f"{interface} is administratively down."
@@ -180,12 +235,13 @@ def _build_authoritative_diagnosis(checker_result, commands, symptom):
                 f"Verify that {interface} is up/up."
             ])
 
-    # --------------------------------------------------------
+    # ========================================================
     # Interface down
-    # --------------------------------------------------------
+    # ========================================================
 
     down_issues = [
-        issue for issue in issues
+        issue
+        for issue in issues
         if issue.get("type") == "interface_down"
     ]
 
@@ -205,24 +261,31 @@ def _build_authoritative_diagnosis(checker_result, commands, symptom):
 
         fault_domain = "Interface"
         osi_layer = "Layer 1"
+        severity = "High"
 
         for issue in down_issues:
-            interface = issue.get("interface", "Unknown interface")
+
+            interface = issue.get(
+                "interface",
+                "Unknown interface"
+            )
 
             evidence.append(
                 f"{interface} is down."
             )
 
             evidence.append(
-                f"The supplied interface status indicates a connectivity problem."
+                "The supplied interface status indicates "
+                "a connectivity problem."
             )
 
-    # --------------------------------------------------------
+    # ========================================================
     # Duplicate IP
-    # --------------------------------------------------------
+    # ========================================================
 
     duplicate_issues = [
-        issue for issue in issues
+        issue
+        for issue in issues
         if issue.get("type") == "duplicate_ip"
     ]
 
@@ -231,15 +294,21 @@ def _build_authoritative_diagnosis(checker_result, commands, symptom):
         issue = duplicate_issues[0]
 
         devices = issue.get("devices", [])
-        ip = issue.get("message", "Duplicate IP address detected.")
+
+        ip = issue.get(
+            "message",
+            "Duplicate IP address detected."
+        )
 
         root_cause = ip
         fault_domain = "IP"
         osi_layer = "Layer 3"
+        severity = "Critical"
 
         evidence.append(ip)
 
         if devices:
+
             evidence.append(
                 f"The duplicate address is associated with: "
                 f"{', '.join(str(d) for d in devices)}."
@@ -250,12 +319,13 @@ def _build_authoritative_diagnosis(checker_result, commands, symptom):
             "Verify the IP configuration after correction."
         ]
 
-    # --------------------------------------------------------
+    # ========================================================
     # Missing VLAN
-    # --------------------------------------------------------
+    # ========================================================
 
     vlan_issues = [
-        issue for issue in issues
+        issue
+        for issue in issues
         if issue.get("type") == "missing_vlan"
     ]
 
@@ -265,6 +335,7 @@ def _build_authoritative_diagnosis(checker_result, commands, symptom):
 
         fault_domain = "VLAN"
         osi_layer = "Layer 2"
+        severity = "Medium"
 
         evidence.append(
             "The deterministic checker found no active VLANs."
@@ -276,12 +347,13 @@ def _build_authoritative_diagnosis(checker_result, commands, symptom):
             "Verify the VLAN using show vlan brief."
         ]
 
-    # --------------------------------------------------------
+    # ========================================================
     # Missing default route
-    # --------------------------------------------------------
+    # ========================================================
 
     route_issues = [
-        issue for issue in issues
+        issue
+        for issue in issues
         if issue.get("type") == "missing_default_route"
     ]
 
@@ -291,9 +363,11 @@ def _build_authoritative_diagnosis(checker_result, commands, symptom):
 
         fault_domain = "Routing"
         osi_layer = "Layer 3"
+        severity = "High"
 
         evidence.append(
-            "The routing table reports that the gateway of last resort is not set."
+            "The routing table reports that the gateway "
+            "of last resort is not set."
         )
 
         fix_steps = [
@@ -301,16 +375,18 @@ def _build_authoritative_diagnosis(checker_result, commands, symptom):
             "Verify the routing table using show ip route."
         ]
 
-    # --------------------------------------------------------
+    # ========================================================
     # Fallback
-    # --------------------------------------------------------
+    # ========================================================
 
     if not root_cause:
         return None
 
     if len(evidence) < 3:
+
         evidence.append(
-            f"The deterministic checker reported {len(issues)} confirmed issue(s)."
+            f"The deterministic checker reported "
+            f"{len(issues)} confirmed issue(s)."
         )
 
     return {
@@ -318,6 +394,7 @@ def _build_authoritative_diagnosis(checker_result, commands, symptom):
         "fault_domain": fault_domain,
         "osi_layer": osi_layer,
         "confidence": "High",
+        "severity": severity,
         "evidence": evidence[:5],
         "next_command": [],
         "fix_steps": fix_steps
@@ -343,6 +420,7 @@ def generate_diagnosis(data, checker_result):
     )
 
     if deterministic_diagnosis:
+
         return json.dumps(
             deterministic_diagnosis,
             indent=2
@@ -386,16 +464,33 @@ fault_domain:
 osi_layer:
 "Undetermined"
 
+confidence:
+"Low"
+
+severity:
+"Low"
+
 fix_steps:
 []
 
 Use next_command only for commands required to obtain missing evidence.
 
-Return ONLY valid JSON.
+Return ONLY valid JSON with exactly these fields:
+
+{{
+    "root_cause": "string",
+    "fault_domain": "string",
+    "osi_layer": "string",
+    "confidence": "High | Medium | Low",
+    "severity": "Critical | High | Medium | Low",
+    "evidence": ["string"],
+    "next_command": ["string"],
+    "fix_steps": ["string"]
+}}
 """
 
     completion = client.chat.completions.create(
-        model="gemini-2.5-flash",
+        model="gemini-3.6-flash",
         messages=[
             {
                 "role": "system",
@@ -406,13 +501,16 @@ Return ONLY valid JSON.
                 "content": user_prompt
             }
         ],
-        temperature=0
+        temperature=0,
+        timeout=30
     )
 
     response = completion.choices[0].message.content
 
     if not response:
-        raise RuntimeError("Gemini returned an empty response.")
+        raise RuntimeError(
+            "Gemini returned an empty response."
+        )
 
     # Validate that Gemini actually returned JSON
     diagnosis = _extract_json(response)

@@ -25,6 +25,7 @@ class Diagnosis(BaseModel):
     fault_domain: str
     osi_layer: str
     confidence: str
+    severity: str
     evidence: List[str] = Field(default_factory=list)
     next_command: List[str] = Field(default_factory=list)
     fix_steps: List[str] = Field(default_factory=list)
