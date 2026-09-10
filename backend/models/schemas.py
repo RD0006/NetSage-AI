@@ -5,6 +5,10 @@ from typing import List, Optional
 class Device(BaseModel):
     name: str
     ip: Optional[str] = None
+    gateway: Optional[str] = None
+    subnet_mask: Optional[str] = None
+    vlan: Optional[int] = None
+    hostname: Optional[str] = None
 
 
 class CommandOutput(BaseModel):

@@ -86,7 +86,11 @@ RULES:
    - confidence must be "High".
    - severity must be "High".
 
-10. If there is no confirmed checker issue, do not invent a fault.
+10. If there is no confirmed checker issue, analyze the supplied evidence.
+    You may diagnose a fault when the evidence directly supports it.
+    Do not invent facts that are not present in the evidence.
+    If the evidence is insufficient to support a diagnosis, use the
+    Low-confidence fallback.
 
 11. If the evidence is insufficient:
     root_cause must be:
@@ -120,6 +124,15 @@ RULES:
     "Medium"
     "Low"
 
+16. routing rule:
+    - If a destination network is explicitly identified in the symptom,
+    notes, topology, or evidence, and that network is absent from the
+    supplied routing table, the LLM may diagnose a missing route.
+    - fault_domain="Routing"
+    - osi_layer="Layer 3"
+    - confidence="High"
+    - severity="High"
+    
 Return ONLY valid JSON with exactly these fields:
 
 {
